@@ -31,9 +31,7 @@ cp .env.example .env
 Edit `.env`, then restrict its permissions with `chmod 600 .env`, and set:
 
 - `GROQ_API_KEY`: your private Groq API key.
-- `POSTGRES_PASSWORD`: a long random password containing letters and numbers only.
-- `NEXUS_BASIC_AUTH_USER`: the username for the protected web interface.
-- `NEXUS_BASIC_AUTH_PASSWORD`: a unique password of at least 16 characters.
+- `POSTGRES_PASSWORD`: a long, unique database password containing letters and numbers only.
 
 Generate random secrets on macOS/Linux if needed:
 
@@ -41,7 +39,7 @@ Generate random secrets on macOS/Linux if needed:
 openssl rand -hex 24
 ```
 
-Use different values for the database password and web password. Never commit `.env` or share it in screenshots or ZIP files.
+Use a unique password for your database. Never commit `.env` or share it in screenshots or ZIP files.
 
 ### 3. Build and start the stack
 
