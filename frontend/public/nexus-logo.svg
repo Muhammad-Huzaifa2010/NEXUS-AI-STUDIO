@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">NEXUS AI STUDIO</title>
+  <desc id="desc">An abstract NEXUS logo for a multi-agent AI studio</desc>
+  <defs>
+    <linearGradient id="nxGradient" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#7b8dff" />
+      <stop offset="50%" stop-color="#5e7cff" />
+      <stop offset="100%" stop-color="#2dd4bf" />
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="32" fill="#091322"/>
+  <path d="M26 86 L64 26 L102 86" fill="none" stroke="url(#nxGradient)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M41 70 H87" stroke="#edf4ff" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="26" cy="86" r="6" fill="#7b8dff"/>
+  <circle cx="102" cy="86" r="6" fill="#2dd4bf"/>
+</svg>
