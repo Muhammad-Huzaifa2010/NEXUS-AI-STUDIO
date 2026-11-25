@@ -19,34 +19,48 @@ _pool: Any = None
 async def init_database() -> None:
     """Connect to PostgreSQL and create the task-history table if configured."""
     global _pool
+    if _pool is not None:
+        return
     if not settings.database_url:
         logger.info("DATABASE_URL is not configured; task history persistence is disabled.")
         return
     if asyncpg is None:
         raise RuntimeError("Install the asyncpg package to enable PostgreSQL persistence.")
 
-    _pool = await asyncpg.create_pool(
-        dsn=settings.database_url,
-        min_size=1,
-        max_size=10,
-        command_timeout=30,
-    )
-    async with _pool.acquire() as connection:
-        await connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS task_history (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                request TEXT NOT NULL,
-                status VARCHAR(24) NOT NULL,
-                workflow VARCHAR(80) NOT NULL DEFAULT 'unknown',
-                selected_agent TEXT NOT NULL DEFAULT '',
-                response TEXT NOT NULL DEFAULT '',
-                tool_events JSONB NOT NULL DEFAULT '[]'::jsonb,
-                activity_events JSONB NOT NULL DEFAULT '[]'::jsonb,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-            """
+    pool = None
+    try:
+        pool = await asyncpg.create_pool(
+            dsn=settings.database_url,
+            min_size=1,
+            max_size=10,
+            command_timeout=30,
         )
+        async with pool.acquire() as connection:
+            await connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS task_history (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    request TEXT NOT NULL,
+                    status VARCHAR(24) NOT NULL,
+                    workflow VARCHAR(80) NOT NULL DEFAULT 'unknown',
+                    selected_agent TEXT NOT NULL DEFAULT '',
+                    response TEXT NOT NULL DEFAULT '',
+                    tool_events JSONB NOT NULL DEFAULT '[]'::jsonb,
+                    activity_events JSONB NOT NULL DEFAULT '[]'::jsonb,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+    except (asyncpg.PostgresError, OSError, TimeoutError):
+        logger.exception(
+            "PostgreSQL task history could not be initialized; "
+            "continuing without history persistence."
+        )
+        if pool is not None:
+            await pool.close()
+        return
+
+    _pool = pool
     logger.info("PostgreSQL task history is ready.")
 
 

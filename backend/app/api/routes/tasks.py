@@ -139,6 +139,11 @@ async def task_history(limit: int = Query(default=50, ge=1, le=100)):
 
 @router.get("/history/{task_id}")
 async def task_history_detail(task_id: str):
+    if not persistence_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail="Task history persistence is not available.",
+        )
     item = await get_task(task_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Task not found.")

@@ -35,7 +35,7 @@ def remove_sources_section(report: str) -> str:
 
     match = re.search(
         r"(?im)^[ \t]{0,3}#{1,6}[ \t]+"
-        r"(?:\d+[.)]?[ \t]+)?Sources[ \t]*$",
+        r"(?:\d+[.)]?[ \t]+)?(?:Sources|Source Links)[ \t]*$",
         report,
     )
     return report[:match.start()].rstrip() if match else report.rstrip()
@@ -94,7 +94,7 @@ def render_research_sources(response: str, sources: list[dict]) -> str:
         if source.get("source_type"):
             details.append(f"Type: {source['source_type']}")
         entries.append(
-            f"{source_id}. [{title}]({_markdown_url(source['url'])})"
+            f"- [{title}]({_markdown_url(source['url'])})"
             f" — {' · '.join(details)}"
         )
 

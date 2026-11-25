@@ -6,7 +6,12 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from app.api.routes.health import health_check
-from app.api.routes.tasks import run_task, stream_task
+from app.api.routes.tasks import (
+    run_task,
+    stream_task,
+    task_history,
+    task_history_detail,
+)
 from app.schemas.tasks import TaskRequest
 
 
@@ -30,6 +35,53 @@ class HealthCheckTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["dependencies"]["database_configured"])
         self.assertFalse(result["dependencies"]["database_connected"])
+
+
+class TaskHistoryAPITests(unittest.IsolatedAsyncioTestCase):
+    async def test_history_returns_persisted_records_without_account_filtering(self):
+        legacy_record = {
+            "id": "41fb1bf8-66d5-470c-a49e-ae0c3c4fbe0f",
+            "request": "Legacy task",
+            "status": "completed",
+        }
+        with (
+            patch(
+                "app.api.routes.tasks.list_tasks",
+                new=AsyncMock(return_value=[legacy_record]),
+            ) as list_tasks,
+            patch("app.api.routes.tasks.persistence_enabled", return_value=True),
+        ):
+            result = await task_history(limit=25)
+
+        list_tasks.assert_awaited_once_with(25)
+        self.assertEqual(result, {
+            "items": [legacy_record],
+            "persistence_enabled": True,
+        })
+
+    async def test_task_detail_returns_not_found_when_missing(self):
+        with (
+            patch("app.api.routes.tasks.persistence_enabled", return_value=True),
+            patch(
+                "app.api.routes.tasks.get_task",
+                new=AsyncMock(return_value=None),
+            ),
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                await task_history_detail("41fb1bf8-66d5-470c-a49e-ae0c3c4fbe0f")
+
+        self.assertEqual(raised.exception.status_code, 404)
+
+    async def test_task_detail_reports_disabled_history_as_unavailable(self):
+        with (
+            patch("app.api.routes.tasks.persistence_enabled", return_value=False),
+            patch("app.api.routes.tasks.get_task", new=AsyncMock()) as get_task,
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                await task_history_detail("41fb1bf8-66d5-470c-a49e-ae0c3c4fbe0f")
+
+        self.assertEqual(raised.exception.status_code, 503)
+        get_task.assert_not_awaited()
 
 
 class FailedTaskHistoryTests(unittest.IsolatedAsyncioTestCase):

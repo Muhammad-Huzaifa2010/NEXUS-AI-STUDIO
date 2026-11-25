@@ -7,8 +7,7 @@ NEXUS AI STUDIO is a multi-agent AI workspace built with React, FastAPI, LangGra
 - Orchestrator-led routing to Research, Execution, Content, and Deep Analysis agents.
 - Sequential specialist execution with shared agent context.
 - Source metadata, deduplication, and evidence excerpts from Tavily results.
-- Citation review with one bounded correction pass and explicit uncertainty labels.
-- Source links are generated from retrieved results rather than model-written URLs.
+- Source links in research responses are generated from retrieved results rather than model-written URLs.
 - Live Server-Sent Events activity streaming.
 - Calculator and unit-conversion tools with a bounded tool registry.
 - Optional live web research through Tavily.
@@ -50,7 +49,7 @@ Task execution, database persistence, and external provider calls are separated 
 - **Execution Agent:** Runs approved calculator and unit-conversion tools.
 - **Content Agent:** Creates written explanations, summaries, and reports.
 - **Deep Analysis Agent:** Performs critical analysis using the shared structured evidence.
-- **Finalizer:** Synthesizes specialist outputs; citation review and response delivery follow.
+- **Finalizer:** Synthesizes specialist outputs and appends the retrieved source links.
 
 ## Technology stack
 
@@ -109,7 +108,6 @@ chmod 600 .env
 | `GROQ_API_KEY` | Docker and LLM tasks | Authenticates Groq API requests |
 | `GROQ_MODEL` | No | Groq model name; defaults to `openai/gpt-oss-20b` |
 | `TAVILY_API_KEY` | No | Enables Tavily live web research; empty disables it |
-| `CITATION_VALIDATION_RETRIES` | No | Citation correction attempts (0-3; defaults to 1) |
 | `RESEARCH_SEARCH_BUDGET` | No | Maximum complementary searches per research task (1-8; defaults to 5) |
 | `RESEARCH_RESULTS_PER_QUERY` | No | Maximum Tavily results per query (1-10; defaults to 5) |
 | `RESEARCH_MAX_SOURCES` | No | Maximum unique sources passed to agents (1-10; defaults to 6) |
@@ -130,7 +128,6 @@ cp .env.example .env
 ```
 
 The backend template uses `GROQ_API_KEY`, `GROQ_MODEL`, `TAVILY_API_KEY`, `DATABASE_URL`, and `FRONTEND_URL`.
-`CITATION_VALIDATION_RETRIES` accepts a value from `0` to `3` and defaults to `1`.
 Research uses a bounded query budget and deduplicates results before passing evidence to agents.
 
 ## Local development
@@ -221,7 +218,7 @@ Content-Type: application/json
 {"request":"Calculate the area of a 12 meter square."}
 ```
 
-The stream emits `status`, `activity`, `result`, and `error` Server-Sent Events. Research tasks include numbered links and a source list built from returned Tavily URLs. A citation review can correct the response once; if the review remains uncertain, the response includes an evidence warning and assessment. Source-backed labels mean the excerpt supports the claim according to the reviewing model; they are not independent verification of the source's truth.
+The stream emits `status`, `activity`, `result`, and `error` Server-Sent Events. Research tasks include a source list built from retrieved Tavily URLs. Source categories are publisher-origin hints, not independent verification of a source's accuracy.
 
 ### Task history
 
@@ -242,7 +239,7 @@ python -m compileall -q app tests
 python -m unittest discover -s tests -v
 ```
 
-Research and citation tests use mocked responses and do not require API keys.
+Research-service and workflow tests use mocked responses and do not require API keys.
 
 Frontend:
 
@@ -264,9 +261,9 @@ docker compose config -q
 - Keep `.env` files out of source control.
 - Restrict root `.env` permissions on shared hosts.
 - Rotate any API key or database password that may have been exposed.
-- The current backend does not implement individual user authentication.
-- Internet-facing deployments should add TLS, identity/authentication, authorization, rate limiting, monitoring, backups, and secret rotation.
-- The Nginx configuration currently provides proxying and security headers but no application login.
+- The application intentionally has no user accounts, registration, login, or authentication.
+- Internet-facing deployments should use TLS, rate limiting, monitoring, backups, and secret rotation; apply access controls at the hosting layer if needed.
+- The Nginx configuration provides proxying and security headers; no application login is provided.
 - Research inputs and retrieved webpage content should be treated as untrusted data.
 
 ## Troubleshooting
@@ -280,10 +277,10 @@ docker compose config -q
 
 ## Current limitations
 
-- Individual authentication is not implemented.
+- The application is account-free; task history is shared by this deployment and is not filtered by user accounts.
 - Tavily is optional and Groq usage depends on provider configuration and quota.
-- Source categories are simple domain-based hints, not reliability judgments. Claim support is assessed by the configured model against the retrieved excerpts, not independently established.
-- PostgreSQL history stores the final report and activity records; raw source excerpts and claim-review data are not persisted separately.
+- Source categories are simple domain-based hints, not reliability judgments. Retrieved sources are not independently validated.
+- PostgreSQL history stores the final report and activity records; raw source excerpts are not persisted separately.
 - PostgreSQL stores task history; it is not persistent vector memory or a RAG system.
 - Tool support is currently limited to approved calculator and unit-conversion operations.
 - Live web research is available only when Tavily is configured.
