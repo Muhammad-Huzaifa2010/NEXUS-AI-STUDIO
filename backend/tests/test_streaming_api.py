@@ -20,9 +20,11 @@ class StreamingAPITests(unittest.IsolatedAsyncioTestCase):
                 "status": "completed",
                 "workflow": "multi_agent",
                 "selected_agent": "Research Agent → Deep Analysis Agent",
+                "agent_outputs": {
+                    "research": "Research findings.",
+                    "deep_analysis": "Critical analysis.",
+                },
                 "response": "The final research and analysis report.",
-                "video_url": None,
-                "video_filename": None,
                 "tool_events": [],
                 "activity_events": [
                     {"agent": "Research Agent", "status": "completed"}
@@ -88,6 +90,10 @@ class StreamingAPITests(unittest.IsolatedAsyncioTestCase):
         result_data = parsed_events[2][1]
 
         self.assertEqual(result_data["status"], "completed")
+        self.assertEqual(
+            result_data["executed_agents"],
+            ["Research Agent", "Deep Analysis Agent"],
+        )
         self.assertEqual(
             result_data["response"],
             "The final research and analysis report.",

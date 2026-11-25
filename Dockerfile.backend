@@ -2,13 +2,9 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    NEXUS_STORAGE_DIR=/app/storage
+    PIP_NO_CACHE_DIR=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    espeak-ng \
-    fonts-dejavu-core \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -19,8 +15,7 @@ RUN python -m pip install --upgrade pip && \
     python -m pip install -r requirements.txt
 
 COPY backend/app ./app
-RUN mkdir -p /app/storage/videos /app/storage/artifacts && \
-    useradd --create-home --uid 10001 nexus && \
+RUN useradd --create-home --uid 10001 nexus && \
     chown -R nexus:nexus /app
 
 USER nexus

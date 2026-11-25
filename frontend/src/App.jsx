@@ -1,6 +1,6 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Activity, ArrowUp, Bot, BrainCircuit, Check, ChevronDown,
   Command, FileText, History, LayoutDashboard,
@@ -16,6 +16,24 @@ const agents = [
   { name: 'Content Agent', short: 'CO', color: '#9874e8', icon: FileText },
   { name: 'Deep Analysis Agent', short: 'DA', color: '#e16b91', icon: BrainCircuit },
 ]
+
+function isSafeExternalHref(href) {
+  try {
+    const url = new URL(href)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+function SafeMarkdownLink({ href, children }) {
+  if (!isSafeExternalHref(href)) return children
+  return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+}
+
+function SafeMarkdownImage({ alt }) {
+  return <span>{alt || ''}</span>
+}
 
 function App() {
   const [backend, setBackend] = useState('connecting')
@@ -35,6 +53,21 @@ function App() {
   const textareaRef = useRef(null)
   const activityEndRef = useRef(null)
 
+  const startNewTask = useCallback(() => {
+    if (taskStatus === 'running') {
+      abortController.current?.abort()
+    }
+    setRequest('')
+    setTaskStatus('idle')
+    setAgentStates({})
+    setResult(null)
+    setActivities([])
+    setError('')
+    setWorkflow('')
+    setActiveTab('workspace')
+    textareaRef.current?.focus()
+  }, [taskStatus])
+
   useEffect(() => {
     fetch('/api/health')
       .then((response) => {
@@ -46,6 +79,18 @@ function App() {
 
     return () => abortController.current?.abort()
   }, [])
+
+  useEffect(() => {
+    function handleNewTaskShortcut(event) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        startNewTask()
+      }
+    }
+
+    window.addEventListener('keydown', handleNewTaskShortcut)
+    return () => window.removeEventListener('keydown', handleNewTaskShortcut)
+  }, [startNewTask])
 
   useEffect(() => {
     activityEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -253,15 +298,9 @@ function App() {
           </div>
         </a>
 
-        <button className="new-task-button" onClick={() => {
-          setRequest('')
-          setResult(null)
-          setActivities([])
-          setError('')
-          textareaRef.current?.focus()
-        }}>
+        <button type="button" className="new-task-button" onClick={startNewTask}>
           <Plus size={17} /> New task
-          <span>⌘ K</span>
+          <span>⌘ / Ctrl K</span>
         </button>
 
         <div className="nav-group">
@@ -295,13 +334,6 @@ function App() {
         </div>
 
         <div className="sidebar-bottom">
-          <div className="plan-card">
-            <div className="plan-icon"><Zap size={16} /></div>
-            <strong>NEXUS Studio</strong>
-            <p>Autonomous intelligence workspace</p>
-            <div className="plan-line"><span /></div>
-            <small>MULTI-AGENT WORKSPACE</small>
-          </div>
           <div className="profile-row">
             <div className="profile-avatar">N</div>
             <div><strong>Studio workspace</strong><small>Personal environment</small></div>
@@ -316,7 +348,10 @@ function App() {
           <div className="header-right">
             <div className="system-pill">
               <i className={`system-indicator ${backend}`} />
-              {backend === 'operational' ? 'All systems operational' : backend === 'connecting' ? 'Connecting' : 'Backend offline'}
+              {backend === 'operational' ? 'All systems operational' :
+                backend === 'connecting' ? 'Connecting' :
+                backend === 'degraded' ? 'Backend degraded' :
+                backend === 'offline' ? 'Backend offline' : 'Backend status unknown'}
             </div>
             <div className="header-date">NEXUS AI STUDIO <span>·</span> v1.0</div>
           </div>
@@ -349,9 +384,8 @@ function App() {
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        a: ({ href, children }) => (
-                          <a href={href} target="_blank" rel="noreferrer">{children}</a>
-                        ),
+                        a: SafeMarkdownLink,
+                        img: SafeMarkdownImage,
                       }}
                     >
                       {item.response || (item.status === 'failed' ? 'This task failed. Check backend logs for details.' : 'No response was saved.')}
@@ -491,16 +525,13 @@ function App() {
                 <span className="result-complete"><Check size={14} /> SUCCESS</span>
               </div>
               <div className="output-card">
-                <div className="output-header"><div><Sparkles size={16} /><strong>NEXUS response</strong></div><span>{result.selected_agent} · {workflow}</span></div>
+                <div className="output-header"><div><Sparkles size={16} /><strong>NEXUS response</strong></div><span>{result.executed_agents?.length ? `Ran: ${result.executed_agents.join(' → ')}` : result.selected_agent} · {workflow}</span></div>
                 <div className="output-body markdown-content">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        a: ({ href, children }) => (
-                          <a href={href} target="_blank" rel="noreferrer">
-                            {children}
-                          </a>
-                        ),
+                        a: SafeMarkdownLink,
+                        img: SafeMarkdownImage,
                       }}
                     >
                       {result.response || ''}

@@ -26,6 +26,7 @@ class WorkflowIntegrationTests(unittest.IsolatedAsyncioTestCase):
             research_output,
             analysis_output,
             final_output,
+            final_output,
         ]
 
         mocked_search_results = {
@@ -80,8 +81,13 @@ class WorkflowIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("solar and wind", result["response"])
 
         # 5. Verify the mocked services were used as expected.
-        mock_search.assert_awaited_once()
-        self.assertEqual(mock_model.await_count, 4)
+        self.assertEqual(mock_search.await_count, 5)
+        self.assertEqual(mock_model.await_count, 5)
+        self.assertIn("Verification status: INCOMPLETE", result["response"])
+        self.assertTrue(any(
+            "no sources" in limitation.lower()
+            for limitation in result["research_limitations"]
+        ))
 
         # 6. Verify the workflow recorded activity events.
         self.assertTrue(result.get("activity_events"))

@@ -39,8 +39,6 @@ async def run_task(task: TaskRequest):
             workflow=result.get("workflow", "unknown"),
             selected_agent=result.get("selected_agent", ""),
             response=result.get("response", ""),
-            video_url=result.get("video_url"),
-            video_filename=result.get("video_filename"),
             tool_events=result.get("tool_events", []),
             activity_events=result.get("activity_events", []),
         )
@@ -81,13 +79,21 @@ async def stream_task(task: TaskRequest):
                 if mode == "custom":
                     yield encode_sse("activity", chunk)
                 elif mode == "values" and "response" in chunk:
+                    agent_labels = {
+                        "research": "Research Agent",
+                        "deep_analysis": "Deep Analysis Agent",
+                        "execution": "Execution Agent",
+                        "content": "Content Agent",
+                    }
                     final_result = {
                         "status": "completed",
                         "workflow": chunk.get("workflow", "unknown"),
                         "selected_agent": chunk.get("selected_agent", ""),
+                        "executed_agents": [
+                            agent_labels.get(agent, agent)
+                            for agent in (chunk.get("agent_outputs") or {})
+                        ],
                         "response": chunk.get("response", ""),
-                        "video_url": chunk.get("video_url"),
-                        "video_filename": chunk.get("video_filename"),
                         "tool_events": chunk.get("tool_events", []),
                         "activity_events": chunk.get("activity_events", []),
                     }

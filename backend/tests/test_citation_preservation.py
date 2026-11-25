@@ -2,12 +2,9 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from app.workflows.agent_graph import deep_analysis_agent
-from app.workflows.workflow_utils import extract_sources_section
-
-
 class CitationPreservationTests(unittest.IsolatedAsyncioTestCase):
 
-    async def test_original_sources_are_preserved_verbatim(self):
+    async def test_analysis_removes_generated_sources_and_preserves_citations(self):
         research_report = """# Research Report
 
 Solar energy is renewable [1]. Wind energy is also renewable [2].
@@ -39,6 +36,12 @@ Wind energy provides another option [2].
             "agent_outputs": {
                 "research": research_report,
             },
+            "evidence_records": [{
+                "source_id": 1,
+                "source_title": "Original Solar Research",
+                "source_url": "https://example.com/solar",
+                "supporting_excerpt": "Solar energy is renewable.",
+            }],
             "activity_events": [],
         }
 
@@ -53,13 +56,11 @@ Wind energy provides another option [2].
             result = await deep_analysis_agent(state)
 
         final_response = result["response"]
-        original_sources = extract_sources_section(research_report)
 
-        self.assertTrue(original_sources)
-        self.assertTrue(final_response.endswith(original_sources))
         self.assertIn("Solar energy", final_response)
         self.assertIn("[1]", final_response)
         self.assertIn("[2]", final_response)
+        self.assertNotIn("## Sources", final_response)
         self.assertNotIn("fake-example.com", final_response)
         self.assertEqual(
             result["agent_outputs"]["deep_analysis"],
@@ -107,7 +108,7 @@ if __name__ == "__main__":
 class FinalizationCitationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_final_synthesis_preserves_original_sources(self):
-        from app.workflows.agent_graph import finalize_workflow
+        from app.workflows.agent_graph import deliver_response, finalize_workflow
 
         research_report = """# Research Report
 
@@ -150,6 +151,17 @@ Solar and wind energy are renewable options [1] and [2].
         state = {
             "request": "Compare solar and wind energy.",
             "task_plan": ["research", "deep_analysis"],
+            "research_sources": [{
+                "id": 1,
+                "title": "Original Solar Research",
+                "url": "https://example.com/solar",
+                "domain": "example.com",
+            }, {
+                "id": 2,
+                "title": "Original Wind Research",
+                "url": "https://example.org/wind",
+                "domain": "example.org",
+            }],
             "agent_outputs": {
                 "research": research_report,
                 "deep_analysis": deep_analysis,
@@ -164,23 +176,23 @@ Solar and wind energy are renewable options [1] and [2].
             "app.workflows.agent_graph.publish_stream_event",
         ):
             mock_model.return_value = generated_synthesis
-            result = await finalize_workflow(state)
+            finalized = await finalize_workflow(state)
+
+        result = await deliver_response({**state, **finalized})
 
         final_response = result["response"]
-        expected_sources = extract_sources_section(deep_analysis)
-
-        self.assertTrue(expected_sources)
-        self.assertTrue(final_response.endswith(expected_sources))
+        self.assertIn("## Sources", final_response)
         self.assertIn("[1]", final_response)
         self.assertIn("[2]", final_response)
         self.assertNotIn("fake-example.com", final_response)
+        self.assertIn("https://example.com/solar", final_response)
 
         print("FINAL SYNTHESIS SOURCES PRESERVED: PASS")
         print("FINAL CITATION MARKERS PRESERVED: PASS")
         print("GENERATED SOURCES REMOVED: PASS")
 
     async def test_finalization_reports_missing_research_sources(self):
-        from app.workflows.agent_graph import finalize_workflow
+        from app.workflows.agent_graph import deliver_response, finalize_workflow
 
         state = {
             "request": "Analyze a topic.",
@@ -199,10 +211,12 @@ Solar and wind energy are renewable options [1] and [2].
             "app.workflows.agent_graph.publish_stream_event",
         ):
             mock_model.return_value = "# Final Report\n\nEvidence is limited."
-            result = await finalize_workflow(state)
+            finalized = await finalize_workflow(state)
+
+        result = await deliver_response({**state, **finalized})
 
         self.assertIn(
-            "Source-level verification is incomplete",
+            "factual claims remain unverified",
             result["response"],
         )
 

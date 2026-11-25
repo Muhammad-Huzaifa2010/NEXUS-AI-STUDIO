@@ -12,10 +12,8 @@ class AgentState(TypedDict, total=False):
     task_plan: list[str]
     current_step: int
     agent_outputs: dict[str, str]
-
-    # Existing video output
-    video_url: str
-    video_filename: str
+    research_sources: list[dict[str, Any]]
+    research_limitations: list[str]
 
     # Existing execution and monitoring
     tool_events: list[dict[str, Any]]

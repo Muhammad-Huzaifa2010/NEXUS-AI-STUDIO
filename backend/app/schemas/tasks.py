@@ -15,7 +15,5 @@ class TaskResponse(BaseModel):
     workflow: str
     selected_agent: str
     response: str
-    video_url: str | None = None
-    video_filename: str | None = None
     tool_events: list[dict[str, Any]] = Field(default_factory=list)
     activity_events: list[dict[str, Any]] = Field(default_factory=list)

@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.health import router as health_router
 from app.api.routes.tasks import router as tasks_router
-from app.api.routes.videos import router as videos_router
 from app.core.config import settings
 from app.database import close_database, init_database
 
@@ -50,4 +49,3 @@ async def root():
 
 app.include_router(health_router, prefix="/api", tags=["System"])
 app.include_router(tasks_router, prefix="/api/tasks", tags=["AI Tasks"])
-app.include_router(videos_router, prefix="/api/videos", tags=["Videos"])

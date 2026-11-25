@@ -20,7 +20,5 @@ dist/
 .vscode/
 
 # Generated files
-storage/videos/*
-!storage/videos/.gitkeep
 storage/artifacts/*
 !storage/artifacts/.gitkeep

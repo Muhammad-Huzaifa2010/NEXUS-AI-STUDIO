@@ -41,8 +41,6 @@ async def init_database() -> None:
                 workflow VARCHAR(80) NOT NULL DEFAULT 'unknown',
                 selected_agent TEXT NOT NULL DEFAULT '',
                 response TEXT NOT NULL DEFAULT '',
-                video_url TEXT,
-                video_filename VARCHAR(80),
                 tool_events JSONB NOT NULL DEFAULT '[]'::jsonb,
                 activity_events JSONB NOT NULL DEFAULT '[]'::jsonb,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -84,9 +82,9 @@ async def save_task(request: str, result: dict[str, Any], status: str = "complet
                 """
                 INSERT INTO task_history (
                     request, status, workflow, selected_agent, response,
-                    video_url, video_filename, tool_events, activity_events
+                    tool_events, activity_events
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb)
+                VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
                 RETURNING id::text
                 """,
                 request,
@@ -94,8 +92,6 @@ async def save_task(request: str, result: dict[str, Any], status: str = "complet
                 str(result.get("workflow", "unknown")),
                 str(result.get("selected_agent", "")),
                 str(result.get("response", "")),
-                result.get("video_url"),
-                result.get("video_filename"),
                 json.dumps(result.get("tool_events") or [], ensure_ascii=False),
                 json.dumps(result.get("activity_events") or [], ensure_ascii=False),
             )
@@ -123,7 +119,7 @@ async def list_tasks(limit: int = 50) -> list[dict[str, Any]]:
         rows = await connection.fetch(
             """
             SELECT id, request, status, workflow, selected_agent, response,
-                   video_url, video_filename, tool_events, activity_events, created_at
+                   tool_events, activity_events, created_at
             FROM task_history
             ORDER BY created_at DESC
             LIMIT $1
@@ -144,7 +140,7 @@ async def get_task(task_id: str) -> dict[str, Any] | None:
         row = await connection.fetchrow(
             """
             SELECT id, request, status, workflow, selected_agent, response,
-                   video_url, video_filename, tool_events, activity_events, created_at
+                   tool_events, activity_events, created_at
             FROM task_history WHERE id = $1
             """,
             parsed_id,

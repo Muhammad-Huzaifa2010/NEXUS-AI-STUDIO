@@ -13,7 +13,5 @@ backend/tests/
 **/__pycache__
 **/*.py[cod]
 **/.pytest_cache
-storage/videos/*
-!storage/videos/.gitkeep
 storage/artifacts/*
 !storage/artifacts/.gitkeep
